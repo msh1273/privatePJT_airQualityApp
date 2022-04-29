@@ -6,6 +6,8 @@ import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -16,11 +18,26 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.airquality.databinding.ActivityMainBinding
+import com.example.airquality.retrofit.AirQualityResponse
+import com.example.airquality.retrofit.AirQualityService
+import com.example.airquality.retrofit.RetrofitConnection
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.create
+import java.io.IOException
+import java.lang.IllegalArgumentException
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
     //뷰 바인딩 설정
     lateinit var binding: ActivityMainBinding
+    //위도와 경도를 가져올 인스턴스를 위한 변수
+    lateinit var locationProvider: LocationProvider
 
     // 런타임 권한 요청 시 필요한 요청 코드
     private val PERMISSIONS_REQUEST_CODE = 100
@@ -40,6 +57,127 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         checkAllPermission() //권한 확인
+        updateUI()
+        setRefreshButton()
+    }
+
+    private fun updateUI(){
+        //인스턴스 생성
+        locationProvider = LocationProvider(this@MainActivity)
+
+        //위도와 경도 정보 가져오기
+        val latitude: Double = locationProvider.getLocationLatitude()
+        val longitude: Double = locationProvider.getLocationLongitude()
+
+        if(latitude != 0.0 || longitude != 0.0){
+            //현재 위치를 가져오고 UI업데이트
+            val address = getCurrentAddress(latitude, longitude)
+            //주소가 null이 아닌경우 update
+            address?.let {
+                binding.tvLocationTitle.text = "${it.thoroughfare}"
+                binding.tvLocationSubtitle.text = "${it.countryName} ${it.adminArea}"
+            }
+            //현재 미세먼지 농도를 가져오고 UI업데이트
+            getAirQualityData(latitude, longitude)
+        }else{
+            Toast.makeText(this@MainActivity, "위도, 경도 정보를 가져올 수 없습니다. 새로고침을 눌러주세요", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * @desc 레트로핏 클래스를 이용하여 미세먼지 오염정보를 가져온다.
+     */
+    private fun getAirQualityData(latitude: Double, longitude: Double){
+        val retrofitAPI = RetrofitConnection.getInstance().create(AirQualityService::class.java)
+
+        retrofitAPI.getAirQualityData(
+            latitude.toString(),
+            longitude.toString(),
+            BuildConfig.AIRVISUAL_API_KEY
+        ).enqueue(object : Callback<AirQualityResponse>{
+            override fun onResponse(
+                call: Call<AirQualityResponse>,
+                response: Response<AirQualityResponse>
+            ) {
+                //정상적인 Response가 왔다면 UI업데이트
+                if(response.isSuccessful){
+                    Toast.makeText(this@MainActivity, "최신 정보 업데이트 완료!", Toast.LENGTH_SHORT).show()
+                    //response.body()가 null이 아니면
+                    response.body()?.let { updateAirUI(it) }
+                } else{
+                    Toast.makeText(this@MainActivity, "업데이트에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<AirQualityResponse>, t: Throwable) {
+                t.printStackTrace()
+                Toast.makeText(this@MainActivity, "업데이트에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    /**
+     * @desc 가져온 데이터 정보를 바탕으로 화면 업데이트
+     */
+    private fun updateAirUI(airQualityData: AirQualityResponse){
+        val pollutionData = airQualityData.data.current.pollution
+
+        //수치 지정(메인 화면 가운데 숫자)
+        binding.tvCount.text = pollutionData.aqius.toString()
+
+        //측정된 날짜 지정
+        val dateTime = ZonedDateTime.parse(pollutionData.ts).withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+            .toLocalDateTime()
+        val dateForatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+        binding.tvCheckTime.text = dateTime.format(dateForatter).toString()
+        when(pollutionData.aqius){
+            in 0..50 ->{
+                binding.tvTitle.text = "좋음"
+                binding.imgBg.setImageResource(R.drawable.bg_good)
+            }
+            in 51..150 ->{
+                binding.tvTitle.text = "보통"
+                binding.imgBg.setImageResource(R.drawable.bg_soso)
+            }
+            in 151..200 ->{
+                binding.tvTitle.text = "나쁨"
+                binding.imgBg.setImageResource(R.drawable.bg_bad)
+            }
+            else ->{
+                binding.tvTitle.text = "매우 나쁨"
+                binding.imgBg.setImageResource(R.drawable.bg_worst)
+            }
+        }
+    }
+    //업데이트 버튼눌렀을 때
+    private fun setRefreshButton(){
+        binding.btnRefresh.setOnClickListener{
+            updateUI()
+        }
+    }
+    fun getCurrentAddress(latitude:Double, longitude: Double): Address?{
+        val geocoder = Geocoder(this, Locale.getDefault())
+        //Address객체는 주소와 관련된 여러 정보를 가짐
+        val addresses: List<Address>?
+
+        addresses = try{
+            //Gecoder 객체를 이용하여 위도와 경도로부터 리스트를 가져온다.
+            geocoder.getFromLocation(latitude, longitude, 7)
+        }catch (ioException: IOException){
+            Toast.makeText(this, "지오코더 서비스 사용불가합니다.", Toast.LENGTH_LONG).show()
+            return null
+        }catch (illegalArgumentException: IllegalArgumentException){
+            Toast.makeText(this, "잘못된 위도 경도 입니다.", Toast.LENGTH_LONG).show()
+            return null
+        }
+        //에러는 아니지만 주소가 발견되지 않은 경우
+        if(addresses == null || addresses.size == 0){
+            Toast.makeText(this, "주소가 발견되지 않았습니다.", Toast.LENGTH_LONG).show()
+            return null
+        }
+        val address: Address = addresses[0]
+        return address
     }
 
     private fun checkAllPermission(){
@@ -86,6 +224,7 @@ class MainActivity : AppCompatActivity() {
             }
             if(checkResult){
                 //위칫값을 가져올 수 있음
+                updateUI()
             } else{
                 //권한이 거부되었으므로 앱 종료
                 Toast.makeText(this@MainActivity, "퍼미션이 거부되었습니다. 앱을 다시 실행하여 권한을 수락해주세요!", Toast.LENGTH_LONG).show()
