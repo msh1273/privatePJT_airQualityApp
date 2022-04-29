@@ -6,6 +6,7 @@ plugins {
 
 Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
+def googleMapApiKey = properties.getProperty('GoogleMap_API_KEY')
 
 android {
     compileSdk 32
@@ -19,6 +20,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "AIRVISUAL_API_KEY", properties['AirVisual_API_KEY']
+        manifestPlaceholders = [googleMapApiKey: googleMapApiKey]
     }
 
     buildTypes {
@@ -40,6 +42,10 @@ android {
 }
 
 dependencies {
+
+    //google map
+    implementation 'com.google.android.gms:play-services-maps:18.0.2'
+    implementation 'com.google.android.gms:play-services-location:19.0.1'
 
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
