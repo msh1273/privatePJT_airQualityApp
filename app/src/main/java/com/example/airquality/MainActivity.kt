@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
@@ -34,6 +36,10 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
+    //위도와 경도 저장
+    var latitude: Double = 0.0
+    var longitude: Double = 0.0
+
     //뷰 바인딩 설정
     lateinit var binding: ActivityMainBinding
     //위도와 경도를 가져올 인스턴스를 위한 변수
@@ -51,6 +57,15 @@ class MainActivity : AppCompatActivity() {
     //위치 서비스 요청 시 필요한 런처
     lateinit var getGPSPermissionLauncher: ActivityResultLauncher<Intent>
 
+    val startMapActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult(), object : ActivityResultCallback<ActivityResult>{
+        override fun onActivityResult(result: ActivityResult?) {
+            if(result?.resultCode ?: 0 == Activity.RESULT_OK){
+                latitude = result?.data?.getDoubleExtra("latitude", 0.0) ?: 0.0
+                longitude = result?.data?.getDoubleExtra("longitude", 0.0) ?: 0.0
+                updateUI()
+            }
+        }
+    })
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -59,6 +74,15 @@ class MainActivity : AppCompatActivity() {
         checkAllPermission() //권한 확인
         updateUI()
         setRefreshButton()
+        setFab()
+    }
+    private  fun setFab(){
+        binding.fab.setOnClickListener{
+            val intent = Intent(this, MapActivity::class.java)
+            intent.putExtra("currentLat", latitude)
+            intent.putExtra("currentLng", longitude)
+            startMapActivityResult.launch(intent)
+        }
     }
 
     private fun updateUI(){
@@ -66,8 +90,10 @@ class MainActivity : AppCompatActivity() {
         locationProvider = LocationProvider(this@MainActivity)
 
         //위도와 경도 정보 가져오기
-        val latitude: Double = locationProvider.getLocationLatitude()
-        val longitude: Double = locationProvider.getLocationLongitude()
+        if(latitude == 0.0 || longitude == 0.0){
+            latitude = locationProvider.getLocationLatitude()
+            longitude = locationProvider.getLocationLongitude()
+        }
 
         if(latitude != 0.0 || longitude != 0.0){
             //현재 위치를 가져오고 UI업데이트
