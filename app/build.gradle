@@ -1,13 +1,14 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-android'
     id 'kotlin-kapt'
+    id 'com.google.gms.google-services'
 }
 
 Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
 def googleMapApiKey = properties.getProperty('GoogleMap_API_KEY')
-
+def googleAdMobsIdKey = properties.getProperty('GoogleAdMobs_ID_KEY')
 android {
     compileSdk 32
 
@@ -20,7 +21,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "AIRVISUAL_API_KEY", properties['AirVisual_API_KEY']
-        manifestPlaceholders = [googleMapApiKey: googleMapApiKey]
+        manifestPlaceholders = [googleMapApiKey: googleMapApiKey, googleAdMobsIdKey: googleAdMobsIdKey]
     }
 
     buildTypes {
@@ -47,6 +48,11 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.0.2'
     implementation 'com.google.android.gms:play-services-location:19.0.1'
 
+    //구글모바일 광고 라이브러리
+    implementation 'com.google.android.gms:play-services-ads:20.4.0'
+
+    implementation platform("com.google.firebase:firebase-bom:29.3.1")
+    implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'androidx.core:core-ktx:1.7.0'

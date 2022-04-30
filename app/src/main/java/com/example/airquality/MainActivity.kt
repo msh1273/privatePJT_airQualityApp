@@ -12,6 +12,7 @@ import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultCallback
@@ -23,6 +24,9 @@ import com.example.airquality.databinding.ActivityMainBinding
 import com.example.airquality.retrofit.AirQualityResponse
 import com.example.airquality.retrofit.AirQualityService
 import com.example.airquality.retrofit.RetrofitConnection
+import com.google.android.gms.ads.*
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -36,6 +40,24 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
+    //전면광고를 위한 변수
+    var mInterstitialAd : InterstitialAd? = null
+    //전면광고 설정 함수
+    private fun setInterstitialAds(){
+        val adRequest = AdRequest.Builder().build()
+
+        InterstitialAd.load(this, "ca-app-pub-3940256099942544/1033173712", adRequest, object : InterstitialAdLoadCallback(){
+            override fun onAdFailedToLoad(adError: LoadAdError) {
+                Log.d("ads log", "전면 광고가 로드 실패했습니다. ${adError.responseInfo}")
+                mInterstitialAd = null
+            }
+
+            override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                Log.d("ads log", "전면 광고가 로드되었습니다.")
+                mInterstitialAd = interstitialAd
+            }
+        })
+    }
     //위도와 경도 저장
     var latitude: Double = 0.0
     var longitude: Double = 0.0
@@ -75,13 +97,41 @@ class MainActivity : AppCompatActivity() {
         updateUI()
         setRefreshButton()
         setFab()
+
+        setBannerAds()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setInterstitialAds()
     }
     private  fun setFab(){
         binding.fab.setOnClickListener{
-            val intent = Intent(this, MapActivity::class.java)
-            intent.putExtra("currentLat", latitude)
-            intent.putExtra("currentLng", longitude)
-            startMapActivityResult.launch(intent)
+            if(mInterstitialAd != null){
+                mInterstitialAd!!.fullScreenContentCallback = object : FullScreenContentCallback(){
+                    override fun onAdDismissedFullScreenContent() {
+                        Log.d("ads log", "전면 광고가 닫혔습니다.")
+
+                        val intent = Intent(this@MainActivity, MapActivity::class.java)
+                        intent.putExtra("currentLat", latitude)
+                        intent.putExtra("currentLng", longitude)
+                        startMapActivityResult.launch(intent)
+                    }
+
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError?) {
+                        Log.d("ads log", "전면 광고가 열리는데 실패했습니다.")
+                    }
+
+                    override fun onAdShowedFullScreenContent() {
+                        Log.d("ads log", "전면 광고가 성공적으로 열렸습니다.")
+                        mInterstitialAd = null
+                    }
+                }
+                mInterstitialAd!!.show(this@MainActivity)
+            }else{
+                Log.d("InterstitialAd", "전면 광고가 로딩되지 않았습니다.")
+                Toast.makeText(this@MainActivity, "잠시 후 다시 시도해주세요", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -291,5 +341,34 @@ class MainActivity : AppCompatActivity() {
             finish()
         })
         builder.create().show()
+    }
+
+    private fun setBannerAds(){
+        //광고 SDK 초기화
+        MobileAds.initialize(this)
+        val adRequest = AdRequest.Builder().build()
+        binding.adView.loadAd(adRequest)
+
+        binding.adView.adListener = object: AdListener(){
+            override fun onAdLoaded() {
+                Log.d("ads log", "배너 광고가 로드 돠었습니다.")
+            }
+
+            override fun onAdFailedToLoad(adError: LoadAdError) {
+                Log.d("ads log", "배너 광고가 로드 실패했습니다. ${adError.responseInfo}")
+            }
+
+            override fun onAdOpened() {
+                Log.d("ads log", "배너 광고를 열었습니다.")
+            }
+
+            override fun onAdClicked() {
+                Log.d("ads log", "배너 광고를 클릭했습니다.")
+            }
+
+            override fun onAdClosed() {
+                Log.d("ads log", "배너 광고를 닫았습니다.")
+            }
+        }
     }
 }
