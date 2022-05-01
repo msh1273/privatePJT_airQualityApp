@@ -1,4 +1,4 @@
-package com.example.airquality.retrofit
+package com.lagoon.airquality.retrofit
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory

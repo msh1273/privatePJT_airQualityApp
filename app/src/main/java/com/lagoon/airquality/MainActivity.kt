@@ -1,7 +1,6 @@
-package com.example.airquality
+package com.lagoon.airquality
 
 import android.Manifest
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
@@ -9,7 +8,6 @@ import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.location.LocationManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -18,25 +16,25 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.airquality.databinding.ActivityMainBinding
-import com.example.airquality.retrofit.AirQualityResponse
-import com.example.airquality.retrofit.AirQualityService
-import com.example.airquality.retrofit.RetrofitConnection
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.lagoon.airquality.databinding.ActivityMainBinding
+import com.lagoon.airquality.retrofit.AirQualityResponse
+import com.lagoon.airquality.retrofit.AirQualityService
+import com.lagoon.airquality.retrofit.RetrofitConnection
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.create
 import java.io.IOException
-import java.lang.IllegalArgumentException
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     private fun setInterstitialAds(){
         val adRequest = AdRequest.Builder().build()
 
-        InterstitialAd.load(this, "ca-app-pub-3940256099942544/1033173712", adRequest, object : InterstitialAdLoadCallback(){
+        InterstitialAd.load(this, "ca-app-pub-9118532229245194/6389861910", adRequest, object : InterstitialAdLoadCallback(){
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 Log.d("ads log", "전면 광고가 로드 실패했습니다. ${adError.responseInfo}")
                 mInterstitialAd = null
@@ -79,9 +77,10 @@ class MainActivity : AppCompatActivity() {
     //위치 서비스 요청 시 필요한 런처
     lateinit var getGPSPermissionLauncher: ActivityResultLauncher<Intent>
 
-    val startMapActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult(), object : ActivityResultCallback<ActivityResult>{
+    val startMapActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult(), object :
+        ActivityResultCallback<ActivityResult> {
         override fun onActivityResult(result: ActivityResult?) {
-            if(result?.resultCode ?: 0 == Activity.RESULT_OK){
+            if(result?.resultCode ?: 0 == RESULT_OK){
                 latitude = result?.data?.getDoubleExtra("latitude", 0.0) ?: 0.0
                 longitude = result?.data?.getDoubleExtra("longitude", 0.0) ?: 0.0
                 updateUI()
@@ -170,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             latitude.toString(),
             longitude.toString(),
             BuildConfig.AIRVISUAL_API_KEY
-        ).enqueue(object : Callback<AirQualityResponse>{
+        ).enqueue(object : Callback<AirQualityResponse> {
             override fun onResponse(
                 call: Call<AirQualityResponse>,
                 response: Response<AirQualityResponse>
@@ -314,7 +313,7 @@ class MainActivity : AppCompatActivity() {
         getGPSPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()) { result ->
             //결괏값을 받았을 때
-            if (result.resultCode == Activity.RESULT_OK) {
+            if (result.resultCode == RESULT_OK) {
                 //사용자가 GPS를 켰는지 확인
                 if (isLocationServicesAvailable()) {
                     isRunTimePermissionsGranted() //런타임 권한 확인

@@ -1,17 +1,16 @@
-package com.example.airquality
+package com.lagoon.airquality
 
 import android.app.Activity
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.example.airquality.databinding.ActivityMainBinding
-import com.example.airquality.databinding.ActivityMapBinding
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.lagoon.airquality.databinding.ActivityMapBinding
 
 class MapActivity : AppCompatActivity(), OnMapReadyCallback {
 

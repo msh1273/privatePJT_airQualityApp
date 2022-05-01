@@ -1,4 +1,4 @@
-package com.example.airquality
+package com.lagoon.airquality
 
 import org.junit.Test
 
